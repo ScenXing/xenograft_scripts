@@ -1,0 +1,31 @@
+# Run oncotator on G89 patient and PDX
+# 11 May 2016
+# Julia X.M. Yin
+
+
+configfile: "./config.json"
+
+BAM_DIR = "/share/ScratchGeneral/julyin/G89/bam_files/"
+SAM_DIR = "/share/ScratchGeneral/julyin/G89/theta/bic_sam_files/"
+
+norm = "G89controlDNA"
+patient = "G89HFMTissueDNA"
+pdx = "G89PDX"
+
+
+#rule all:
+#    input: 
+#        expand(SAM_DIR + "", type=VAR_TYPE),
+
+
+rule n1_bic_uniquely_mapped_samtools:
+    input: BAM_DIR + "G89controlDNA.dedup.realn.bam"
+    message:
+        """ [][][]
+        INPUTS:
+        {input}
+        """
+    shell: """
+    {config[bic_sam_path]}/samtools view -U BWA,/share/ScratchGeneral/julyin/G89/theta/bic_sam_files/,N,N {input}
+    """
+

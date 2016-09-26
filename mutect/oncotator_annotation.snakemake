@@ -1,0 +1,126 @@
+# Run oncotator on G89 patient and PDX
+# 11 May 2016
+# Julia X.M. Yin
+
+
+configfile: "/home/julyin/analysis/xenograft_scripts/oncotator_snakemake/config.json"
+
+DIR = "/home/julyin/genome_gbm_variant_calling/strelka-snvs-indels/"
+SAMPLE_PDX = "strelka-G89controlDNA.dedup.realn.bam-vs-G89PDX.dedup.realn.bam"
+SAMPLE_PATIENT = "strelka-G89controlDNA-vs-G89HFMTissueDNA"
+OUT_DIR = "/home/julyin/genome_gbm_variant_calling/strelka_oncotator/" 
+
+#DB_DIR=/share/ClusterShare/software/contrib/julyin/oncotator/oncotator_v1_ds_June112014
+VAR_TYPE = ["snvs", "indels"]
+
+
+SAM_PDX_DIR = DIR + SAMPLE_PDX + "/myAnalysis/results/"
+SAM_PATIENT_DIR = DIR + SAMPLE_PATIENT + "/myAnalysis/results/"
+
+MUTECT_SOFTWARE_DIR=/share/ClusterShare/software/contrib/julyin/muTect
+#GATK_DIR=/share/ClusterShare/software/contrib/gi/gatk/2.5-2-gf57256b/GenomeAnalysisTK-2.5-2-gf57256b
+# cosmic file created by user from instructions on GATK forum
+COSMIC_FILE="/home/julyin/analysis/cosmicfiles/Cosmic.v68.hg19.vcf"
+#COSMIC_FILE="/share/ClusterShare/biodata/contrib/julyin/b37_cosmic_v54_120711.vcf"
+DBSNP_FILE = "/share/ClusterShare/biodata/contrib/gi/gatk-resource-bundle/2.8/hg19/dbsnp_138.hg19.vcf"
+
+#====
+bam_dir = "/share/ScratchGeneral/julyin/G89/"
+normal = "G89controlDNA.dedup.realn.bam"
+patient = "G89HFMTissueDNA.dedup.realn.bam"
+pdx = "G89PDX_mousefilt.bam"
+
+
+rule all:
+    input: 
+        expand(OUT_DIR + "headerless.G89control.vs.G89PDX.passed.{type}.oncotator.maf", type=VAR_TYPE),
+        expand(OUT_DIR + "headerless.G89control.vs.G89HFMTissue.passed.{type}.oncotator.maf", type=VAR_TYPE)
+
+rule mutect:
+    input:
+        norm_bam = bam_dir + normal + ".dedup.realn.bam"
+        patient_bam = bam_dir + patient + ".dedup.realn.bam"
+    output:
+
+    message:
+        """ [][][] Oncotator annotation of G89control and PDX
+        INPUTS:
+        {input}
+        OUTPUTS:
+        {output}
+        """
+    shell: """
+/share/ClusterShare/software/contrib/julyin/java_1_6/jdk1.6.0_45/bin/java -Xmx2g -jar ${MUTECT_SOFTWARE_DIR}/muTect-1.1.4.jar \
+    --analysis_type MuTect \
+    --reference_sequence $REF_FILE \
+    --cosmic $COSMIC_FILE \
+    --dbsnp $DBSNP_FILE \
+    --input_file:normal {input.norm_bam} \
+    --input_file:tumor {input.patient_bam} \
+    --out ${VARIANT_OUT_DIR}/normal.vs.patient.mutect.out \
+    --coverage_file ${VARIANT_OUT_DIR}/$PRE.vs.$POST.mutect.coverage.wig.txt \
+	--vcf ${VARIANT_OUT_DIR}/$PRE.vs.$POST.mutect.vcf
+
+grep -v REJECT ${VARIANT_OUT_DIR}/$PRE.vs.$POST.mutect.vcf > ${FILTERED_VCF_OUT_DIR}/$PRE.vs.$POST.mutect.filtered.vcf
+"""
+
+
+rule oncotator_PDX:
+    input:
+        SAM_PDX_DIR + "passed.somatic.{type}.vcf"
+    output:
+        OUT_DIR + "G89control.vs.G89PDX.passed.{type}.oncotator.maf"
+    message:
+        """ [][][] Oncotator annotation of G89control and PDX
+        INPUTS:
+        {input}
+        OUTPUTS:
+        {output}
+        """
+    shell: """
+    oncotator -i VCF --db-dir={config[db_path]} --canonical-tx-file={config[canonical_tx_file]} --output_format=TCGAMAF {input} {output} hg19
+    """
+
+rule oncotator_Patient:
+    input:
+        SAM_PATIENT_DIR + "passed.somatic.{type}.vcf"
+    output:
+        OUT_DIR + "G89control.vs.G89HFMTissue.passed.{type}.oncotator.maf"
+    message:
+        """ [][][] Oncotator annotation of G89control and patient
+        INPUTS:
+        {input}
+        OUTPUTS:
+        {output}
+        """
+    shell: """
+    oncotator -i VCF --db-dir={config[db_path]} --canonical-tx-file={config[canonical_tx_file]} --output_format=TCGAMAF {input} {output} hg19
+    """
+
+
+rule remove_comment_lines:
+    input:
+        OUT_DIR + "G89control.vs.{tumour}.passed.{type}.oncotator.maf"
+    output:
+        OUT_DIR + "headerless.G89control.vs.{tumour}.passed.{type}.oncotator.maf"
+    message:
+        """ [][][] Remove headers in maf files
+        INPUTS:
+        {input}
+        OUTPUTS:
+        {output}
+        """
+    shell: """
+        sed '/^\#/d' {input} > {output} """
+        
+
+
+
+
+
+
+
+
+
+
+

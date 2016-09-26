@@ -1,0 +1,126 @@
+# =============================================
+# Xenograft pipeline with snakemake
+#
+# Julia X.M. Yin
+# August 2015
+#==============================================
+
+
+
+
+#ORGANISM = "human mouse".split()
+
+#XENO_OUT = "prim_specific sec_specific prim_multi sec_multi unassigned unresolved".split()
+
+#HUMAN_REF = "/share/ClusterShare/biodata/contrib/julyin/hg19/ucsc.hg19.fasta"
+#MOUSE_REF = "/share/ClusterShare/biodata/contrib/julyin/mm10/ucsc.mm10.fasta"
+COMBO_REF = "/share/ClusterShare/biodata/contrib/julyin/combined_hg19_mm10/hg19.mm10.ucsc.fasta"
+
+MAIN_DIR = "/share/ClusterScratch/julyin/combo_G89PDX/"
+FASTQ_DIR = "/directflow/ClinicalGenomicsPipeline/work_dirs/work_projects_internal/R_150522_KERMCD_FGS_M001/inputFastq/"
+SAM_DIR = MAIN_DIR + "sam_files/"
+BAM_DIR = MAIN_DIR + "bam_files/"
+
+FASTQ_R1 = "H7LGCCCXX_3_150702_FR07886671_Human__R_150522_KERMCD_FGS_M001_R1.fastq.gz"
+FASTQ_R2 = "H7LGCCCXX_3_150702_FR07886671_Human__R_150522_KERMCD_FGS_M001_R2.fastq.gz"
+
+
+#The files you want to end up with
+rule all:
+    input: 
+        #expand(BAM_DIR+"{org}.{patient}.bam", patient=SAMPLES_NAME, org=ORGANISM)
+        #expand(XENO_DIR+"G89PDX.{xeno_file}.sam", xeno_file=XENO_OUT)
+        #expand("/share/ClusterScratch/julyin/human_G89PDX/{org}.G89PDX.sorted.bai", org=ORGANISM)
+        BAM_DIR + "combo.G89PDX.sorted.bai"
+
+rule map_to_combo_sam:
+    params:
+        cores="16",
+        hvmem="h_vmem=8G",
+        memrequested="mem_requested=8G",
+        account="GenomeInformatics",
+        jobname="map_to_combo_sam"
+    input: 
+        ref = COMBO_REF, 
+        lane1 = FASTQ_DIR + FASTQ_R1, 
+        lane2 = FASTQ_DIR + FASTQ_R2
+    output: 
+        SAM_DIR + "combo.G89PDX.sam" 
+    message:
+        """[][][] Mapping to human to get sam file. 
+        INPUTS:
+        {input}
+        OUTPUTS:
+        {output}"""
+    shell: 
+        "module load gi/bwa/0.7.12;"
+        "bwa mem -t 16 {input.ref} {input.lane1} {input.lane2} > {output}"
+
+
+rule combo_sam_to_bam:
+    params:
+        cores="1",
+        hvmem="h_vmem=8G",
+        memrequested="mem_requested=8G",
+        account="GenomeInformatics",
+        jobname="combo_sam_to_bam"
+    input: 
+        SAM_DIR + "combo.G89PDX.sam"
+    output: 
+        BAM_DIR + "combo.G89PDX.bam"
+    message:
+        """[][][] Transform human sam file into bam file.
+        INPUTS:
+        {input}
+        OUTPUTS:
+        {output}"""
+    shell: 
+        "module load gi/samtools/1.2;"
+        "samtools view -h -b -S {input} > {output}"
+
+
+rule sort_bam:
+    params:
+        cores="1",
+        hvmem="h_vmem=8G",
+        memrequested="mem_requested=8G",
+        account="GenomeInformatics",
+        jobname="sort_bam"
+    input: 
+        BAM_DIR + "combo.G89PDX.bam"
+    output: 
+        BAM_DIR + "combo.G89PDX.sorted.bam"
+    message:
+        """[][][] Sort bam file.
+        INPUTS:
+        {input}
+        OUTPUTS:
+        {output}"""
+    shell: 
+        "samtools sort -m 6G {input} /share/ClusterScratch/julyin/combo_G89PDX/bam_files/combo.G89PDX.sorted"
+
+rule index_bam:
+    params:
+        cores="1",
+        hvmem="h_vmem=8G",
+        memrequested="mem_requested=8G",
+        account="GenomeInformatics",
+        jobname="index_bam"
+    input: 
+        BAM_DIR + "combo.G89PDX.sorted.bam"
+    output: 
+        BAM_DIR + "combo.G89PDX.sorted.bai"
+    message:
+        """[][][] Index bam file.
+        INPUTS:
+        {input}
+        OUTPUTS:
+        {output}"""
+    shell: 
+        "samtools index {input}"
+
+ 
+
+
+
+

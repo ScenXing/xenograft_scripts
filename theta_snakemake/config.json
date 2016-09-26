@@ -1,0 +1,14 @@
+{
+    "db_path": "/share/ClusterShare/biodata/contrib/julyin/oncotator/oncotator_v1_ds_Jan262014",
+    "canonical_tx_file": "/share/ClusterShare/biodata/contrib/julyin/oncotator/tx_exact_uniprot_matches.txt",
+    "samples": {
+        "Sample4": ["Sample4"],
+        "Sample5": ["Sample5"]
+    },
+    "bic_sam_path": "/share/ClusterShare/software/contrib/julyin/BICseq/PERL_pipeline/BICseq_1.1.2/SAMgetUnique/samtools-0.1.7a_getUnique-0.1.1",
+    "data": {
+        "Sample4": {"forward": "sample4_R1.fastq", "reverse": "sample4_R2.fastq"},
+        "Sample5": {"forward": "sample5_1.fq", "reverse": "sample5_2.fq"}
+    }
+}
+

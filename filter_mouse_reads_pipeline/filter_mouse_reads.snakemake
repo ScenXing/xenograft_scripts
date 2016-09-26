@@ -1,0 +1,123 @@
+#!/bin/bash
+
+
+
+MAIN_DIR = "/share/Temp/julyin/xenograft_G89/filter_out_mouse_pipeline"
+FASTQ_DIR = "/share/Temp/julyin/xenograft_G89/filter_out_mouse_pipeline/" + "fastq_files/"
+SAM_DIR = MAIN_DIR + "sam_files/"
+BAM_DIR = MAIN_DIR + "bam_files/"
+
+HUMAN_REF = "/share/ClusterShare/biodata/contrib/julyin/hg19/ucsc.hg19.fasta"
+
+SAMPLE = "combo.G89PDX"
+
+rule all:
+    input:  
+        BAM_DIR + SAMPLE + ".sorted.bam"
+       
+
+
+#rule get_unmapped_reads:
+#    params:
+#        cores="1",
+#        hvmem="h_vmem=8G",
+#        memrequested="mem_requested=8G",
+#        account="GenomeInformatics",
+#        jobname="get_unmapped_bam_1"
+#    input:
+#        "/share/ClusterScratch/julyin/G89PDX_namesort/mouse.G89PDX.namesorted.bam"
+#    output:
+#        FASTQ_DIR + "unmapped.G89PDX_R_1.fastq",
+#        FASTQ_DIR + "unmapped.G89PDX_R_2.fastq"
+#    message:
+#        """[][][] Transform human sam file into bam file.
+#        INPUTS:
+#        {input}
+#        OUTPUTS:
+#        {output}"""
+#    shell:
+#        "/share/ClusterShare/software/contrib/julyin/bam2fastq/bam2fastq-1.1.0/bam2fastq -o /share/ClusterScratch/julyin/filter_PDX_pipeline/fastq_files/unmapped.G89PDX_R#.fastq --no-aligned {input}"
+
+
+
+
+rule map_to_combo_with_bwa:
+    params:
+        cores="16",
+        hvmem="h_vmem=8G",
+        memrequested="mem_requested=8G",
+        account="GenomeInformatics",
+        jobname="map_bwa_2"
+    input:
+        ref = HUMAN_REF,
+        lane1 = FASTQ_DIR + "unmapped.G89PDX_R_1.fastq",
+        lane2 = FASTQ_DIR + "unmapped.G89PDX_R_2.fastq"
+    output:
+        SAM_DIR + SAMPLE + ".bwa.sam"
+    message:
+        """[][][] Mapping to human to get sam file.
+        INPUTS:
+        {input}
+        OUTPUTS:
+        {output}"""
+    shell:
+        "module load gi/bwa/0.7.12;"
+        "bwa mem -t 16 {input.ref} {input.lane1} {input.lane2} > {output}"
+
+
+
+
+
+rule sam_to_bam:
+    params:
+        cores="16",
+        hvmem="h_vmem=8G",
+        memrequested="mem_requested=8G",
+        account="GenomeInformatics",
+        jobname="sam_to_bam_3"
+    input:
+        SAM_DIR + SAMPLE + ".bwa.sam"
+    output:
+        BAM_DIR + SAMPLE + ".bwa.bam"
+    message:
+        """[][][] Transform human sam file into bam file.
+        INPUTS:
+        {input}
+        OUTPUTS:
+        {output}"""
+    shell:
+        "module load gi/samtools/1.2;"
+        "samtools view -@ 16 -h -b -S {input} > {output}"
+
+
+rule sort_bam:
+    params:
+        cores="16",
+        hvmem="h_vmem=8G",
+        memrequested="mem_requested=8G",
+        account="GenomeInformatics",
+        jobname="sort_bam_4"
+    input: 
+        BAM_DIR + SAMPLE + ".bwa.bam"
+    output: 
+        BAM_DIR + SAMPLE + ".sorted.bam" 
+    message:
+        """[][][] Sort bam file using novosort. 
+        INPUTS:
+        {input}
+        OUTPUTS:
+        {output}"""
+    shell: 
+        "module load gi/novosort/precompiled/1.03.08;"
+        "novosort --threads 16 --ram 8 --tmpdir /share/Temp/julyin/xenograft_G89/filter_out_mouse_pipeline/tmp --strand --markDuplicates --index -o {output} {input}"
+
+
+
+
+
+
+
+
+
+
+

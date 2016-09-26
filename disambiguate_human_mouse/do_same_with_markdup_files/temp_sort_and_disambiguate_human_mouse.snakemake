@@ -1,0 +1,98 @@
+#!/bin/bash
+
+MAIN_DIR="/share/Temp/julyin/xenograft_G89/disambiguate_snakemake_markdup/"
+BAM_DIR= MAIN_DIR + "bam_files/"
+
+
+
+DISAMBIG_DIR=MAIN_DIR + "disambiguate/"
+DISAMBIG_OUT=".disambiguatedSpeciesA.bam .disambiguatedSpeciesB.bam .ambiguousSpeciesA.bam .ambiguousSpeciesB.bam _summary.txt".split()
+
+rule all:
+    input:
+        expand(DISAMBIG_DIR + "results/" + "G89PDX{disambig}", disambig=DISAMBIG_OUT)
+
+
+rule human_sort_bam:
+    params:
+        cores="16",
+        hvmem="h_vmem=8G",
+        memrequested="mem_requested=8G",
+        account="GenomeInformatics",
+        jobname="human_namesort_bam"
+    input:
+        "/share/ClusterScratch/julyin/G89PDX_disambiguate/human.G89PDX.bam"
+    output: 
+        namesort= BAM_DIR + "human.G89PDX.namesorted.bam",
+        removedup= BAM_DIR + "human.G89PDX.namesorted.dedup.bam"
+    message:
+        """[][][] Sort bam file using novosort. 
+        INPUTS:
+        {input}
+        OUTPUTS:
+        {output}"""
+    shell: 
+        "module load gi/novosort/precompiled/1.03.08;"
+        "novosort --threads 16 --ram 8 --removeDuplicates --tmpdir /share/Temp/julyin/xenograft_G89/disambiguate_snakemake_markdup/tmp --strand --index -o {output.namesort} {input};"
+        "novosort --threads 16 --ram 8 --tmpdir /share/Temp/julyin/xenograft_G89/disambiguate_snakemake_markdup/tmp --namesort --strand --index -o {output.removedup} {input}"
+
+
+
+rule mouse_namesort_bam:
+    params:
+        cores="16",
+        hvmem="h_vmem=8G",
+        memrequested="mem_requested=8G",
+        account="GenomeInformatics",
+        jobname="mouse_namesort_bam"
+    input: 
+        "/share/ClusterScratch/julyin/G89PDX_disambiguate/mouse.G89PDX.bam"
+    output: 
+        namesort= BAM_DIR + "mouse.G89PDX.namesorted.bam",
+        removedup= BAM_DIR + "mouse.G89PDX.namesorted.dedup.bam"    
+    message:
+        """[][][] Sort bam file using novosort. 
+        INPUTS:
+        {input}
+        OUTPUTS:
+        {output}"""
+    shell: 
+        "module load gi/novosort/precompiled/1.03.08;"
+        "novosort --threads 16 --ram 8 --removeDuplicates --tmpdir /share/Temp/julyin/xenograft_G89/disambiguate_snakemake_markdup/tmp --strand --index -o {output.namesort} {input};"
+        "novosort --threads 16 --ram 8 --tmpdir /share/Temp/julyin/xenograft_G89/disambiguate_snakemake_markdup/tmp --namesort --strand --index -o {output.removedup} {input}"
+
+
+
+rule disambiguate:
+    params:
+        cores="1",
+        hvmem="h_vmem=20G",
+        memrequested="mem_requested=8G",
+        account="GenomeInformatics",
+        jobname="disambiguate_G89PDX"
+    input: 
+        human_namesort_bam = BAM_DIR + "human.G89PDX.namesorted.dedup.bam",
+        mouse_namesort_bam = BAM_DIR + "mouse.G89PDX.namesorted.dedup.bam"
+    output: 
+        expand(DISAMBIG_DIR + "results/" + "G89PDX{disambig}", disambig=DISAMBIG_OUT)
+        #DISAMBIG_DIR + "results/G89PDX.disambiguatedSpeciesA.bam"
+        #DISAMBIG_DIR + "results/G89PDX.disambiguatedSpeciesB.bam"
+        #DISAMBIG_DIR + "results/G89PDX.ambiguousSpeciesA.bam"
+        #DISAMBIG_DIR + "results/G89PDX.ambiguousSpeciesB.bam"
+        #DISAMBIG_DIR + "results/G89PDX_summary.txt"
+    message:
+        """[][][] Sort bam file using novosort. 
+        INPUTS:
+        {input}
+        OUTPUTS:
+        {output}"""
+    shell:
+        "python /share/ClusterShare/software/contrib/julyin/disambiguate/disambiguate.py \
+            -o /share/ClusterScratch/julyin/G89PDX_disambiguate_snakemake_markdup/results \
+            -i /share/ClusterScratch/julyin/G89PDX_disambiguate_snakemake_markdup/intermediate \
+            -s G89PDX.dedup \
+            -a bwa \
+            -d \
+            {input.human_namesort_bam} {input.mouse_namesort_bam}"
+
+

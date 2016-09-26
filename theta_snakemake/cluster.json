@@ -1,0 +1,26 @@
+{
+    "__default__" :
+    {
+        "cores" : 1,
+        "hvmem" : "h_vmem=24G",
+        "memrequested" : "mem_requested=24G",
+        "account" : "GenomeInformatics",
+        "jobname" : "default"
+    },
+    "oncotator_PDX" :
+    {
+        "cores" : 1,
+        "hvmem" : "h_vmem=8G",
+        "memrequested" : "mem_requested=8G",
+        "account" : "GenomeInformatics",
+        "jobname" : "onco_pdx"
+    },
+    "oncotator_Patient" :
+    {
+        "cores" : 1,
+        "hvmem" : "h_vmem=8G",
+        "memrequested" : "mem_requested=8G",
+        "account" : "GenomeInformatics",
+        "jobname" : "onco_patient"
+    }
+}

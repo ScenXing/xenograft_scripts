@@ -1,0 +1,57 @@
+
+
+DBSNP = "/share/ClusterShare/biodata/contrib/julyin/common_no_known_medical_impact_20160502.chrmod.vcf.gz"
+
+VCF_DIR = "/home/julyin/analysis/xenograft_scripts/file_links/"
+
+VAR_TYPE = ["snvs", "indels"]
+SAMPLE_NAMES = ["strelka-G89control.vs.G89HFMTissue", "strelka-G89control.vs.G89PDX", "strelka-G89control.vs.G89_mousefiltpdx"]
+OUT_FILES = ["0000.vcf", "0001.vcf", "0002.vcf", "0003.vcf", "README.txt"]
+
+rule all:
+    input:
+        expand(VCF_DIR + "{sample}/common_mutations_filtered_{type}/{file}", type=VAR_TYPE, sample=SAMPLE_NAMES, file=OUT_FILES)
+
+rule preprep:
+    input:
+        VCF_DIR + "{sample}/passed.somatic.{type}.vcf"
+    output:
+        VCF_DIR + "{sample}/passed.somatic.{type}.vcf.gz"
+    message:
+        """[][][] bgzip and tabix vcf files
+        INPUTS:
+        {input}
+        OUTPUTS:
+        {output}
+        """
+    shell: """
+        . /etc/profile.d/modules.sh
+        module load julyin/tabix/0.2.6
+        bgzip -c -f {input} > {output}
+        tabix -p vcf {output}
+    """
+
+rule intersect:
+    input:
+        vcf = VCF_DIR + "{sample}/passed.somatic.{type}.vcf.gz",
+        dbsnp = DBSNP
+    output:
+        VCF_DIR + "{sample}/common_mutations_filtered_{type}/0000.vcf",
+        VCF_DIR + "{sample}/common_mutations_filtered_{type}/0001.vcf",
+        VCF_DIR + "{sample}/common_mutations_filtered_{type}/0002.vcf",
+        VCF_DIR + "{sample}/common_mutations_filtered_{type}/0003.vcf",
+        VCF_DIR + "{sample}/common_mutations_filtered_{type}/README.txt"
+    params:
+        prefix = VCF_DIR + "{sample}/common_mutations_filtered_{type}"
+    message:
+        """[][][] bcftools isec 
+        INPUTS:
+        {input}
+        OUTPUTS:
+        {output}
+        """
+    shell: """
+        module load julyin/bcftools/1.3.1
+        bcftools isec --prefix {params} {input.vcf} {input.dbsnp}
+        """
+        

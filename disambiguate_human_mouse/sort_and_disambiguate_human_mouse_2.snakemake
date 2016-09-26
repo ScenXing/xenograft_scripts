@@ -1,0 +1,90 @@
+#!/bin/bash
+
+
+
+DISAMBIG_DIR="/share/ClusterScratch/julyin/G89PDX_disambiguate_snakemake_2/"
+DISAMBIG_OUT=".disambiguatedSpeciesA.bam .disambiguatedSpeciesB.bam .ambiguousSpeciesA.bam .ambiguousSpeciesB.bam _summary.txt".split()
+
+rule all:
+    input:
+        expand(DISAMBIG_DIR + "results/" + "G89PDX{disambig}", disambig=DISAMBIG_OUT)
+
+#rule human_sort_bam:
+#    params:
+#        cores="16",
+#        hvmem="h_vmem=8G",
+#        memrequested="mem_requested=8G",
+#        account="GenomeInformatics",
+#        jobname="sort_bam"
+#    input: 
+#        bam_file="/share/ClusterScratch/julyin/G89PDX_disambiguate/human.G89PDX.bam"
+#    output: 
+#        "/share/ClusterScratch/julyin/G89PDX_namesort/human.G89PDX.namesorted.bam" 
+#    message:
+#        """[][][] Sort bam file using novosort. 
+#        INPUTS:
+#        {input}
+#        OUTPUTS:
+#        {output}"""
+#    shell: 
+#        "module load gi/novosort/precompiled/1.03.08;"
+#        "novosort --threads 16 --ram 8 --tmpdir /share/ClusterScratch/julyin/G89PDX_namesort --namesort --strand --index -o {output} {input.bam_file}"
+#
+#
+#
+#rule mouse_namesort_bam:
+#    params:
+#        cores="16",
+#        hvmem="h_vmem=8G",
+#        memrequested="mem_requested=8G",
+#        account="GenomeInformatics",
+#        jobname="mouse_namesort_bam"
+#    input: 
+#        bam_file="/share/ClusterScratch/julyin/G89PDX_disambiguate/mouse.G89PDX.bam"
+#    output: 
+#        "/share/ClusterScratch/julyin/G89PDX_namesort/mouse.G89PDX.namesorted.bam" 
+#    message:
+#        """[][][] Sort bam file using novosort. 
+#        INPUTS:
+#        {input}
+#        OUTPUTS:
+#        {output}"""
+#    shell: 
+#        "module load gi/novosort/precompiled/1.03.08;"
+#        "novosort --threads 16 --ram 8 --tmpdir /share/ClusterScratch/julyin/G89PDX_namesort --namesort --strand --index -o {output} {input.bam_file}"
+
+
+
+rule disambiguate:
+    params:
+        cores="1",
+        hvmem="h_vmem=8G",
+        memrequested="mem_requested=8G",
+        account="GenomeInformatics",
+        jobname="disambiguate_G89PDX"
+    input: 
+        human_namesort_bam="/share/ClusterScratch/julyin/G89PDX_namesort/human.G89PDX.namesorted.bam",
+        mouse_namesort_bam="/share/ClusterScratch/julyin/G89PDX_namesort/mouse.G89PDX.namesorted.bam"
+    output: 
+        expand(DISAMBIG_DIR + "results/" + "G89PDX{disambig}", disambig=DISAMBIG_OUT)
+        #DISAMBIG_DIR + "results/G89PDX.disambiguatedSpeciesA.bam"
+        #DISAMBIG_DIR + "results/G89PDX.disambiguatedSpeciesB.bam"
+        #DISAMBIG_DIR + "results/G89PDX.ambiguousSpeciesA.bam"
+        #DISAMBIG_DIR + "results/G89PDX.ambiguousSpeciesB.bam"
+        #DISAMBIG_DIR + "results/G89PDX_summary.txt"
+    message:
+        """[][][] Sort bam file using novosort. 
+        INPUTS:
+        {input}
+        OUTPUTS:
+        {output}"""
+    shell:
+        "python /share/ClusterShare/software/contrib/julyin/disambiguate/disambiguate.py \
+            -o /share/ClusterScratch/julyin/G89PDX_disambiguate_snakemake_2/results \
+            -i /share/ClusterScratch/julyin/G89PDX_disambiguate_snakemake_2/intermediate \
+            -s G89PDX \
+            -a bwa \
+            -d \
+            {input.human_namesort_bam} {input.mouse_namesort_bam}"
+
+
